@@ -1,0 +1,2 @@
+# ptrace_helper
+一个用于抹去ptrace注入部分文件特征的apatch内核模块
