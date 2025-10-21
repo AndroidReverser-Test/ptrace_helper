@@ -26,7 +26,7 @@ KPM_DESCRIPTION("Ptrace Helper");
 
 uid_t test_uid = 0;
 char *test_tpid = "0";
-void *task_state_addr;
+void *proc_pid_status_addr;
 void *do_task_stat_addr;
 void *proc_pid_wchan_addr;
 
@@ -35,7 +35,7 @@ long (*simple_strtol)(const char *cp, char **endp, unsigned int base) = 0;
 int (*num_to_str)(char *buf, int size, unsigned long long num, unsigned int width) = 0; //num_to_str(m->buf + m->count, 字符最大长度, num, 0);
 pid_t (*__mtask_pid_nr_ns)(struct task_struct *task, enum pid_type type, struct pid_namespace *ns) = 0;
 
-void after_task_state(hook_fargs4_t *args, void *udata)
+void after_proc_pid_status(hook_fargs4_t *args, void *udata)
 {
     struct seq_file* o_seq_file;
     struct task_struct* o_task_struct;
@@ -88,7 +88,7 @@ void after_task_state(hook_fargs4_t *args, void *udata)
     if(strncmp(tpid,test_tpid,tpid_len)==0){
         return;
     }else{
-        char copy_str[500];
+        char copy_str[5000];
         int copy_str_size = 0;
         int g1=(state_start_flag-o_status_buf)+7;
         memcpy(copy_str,o_status_buf,g1);
@@ -189,14 +189,14 @@ static long ptrace_helper_init(const char *args, const char *event, void *__user
     simple_strtol = (typeof(simple_strtol))kallsyms_lookup_name("simple_strtol");
     num_to_str = (typeof(num_to_str))kallsyms_lookup_name("num_to_str");
     __mtask_pid_nr_ns = (typeof(__mtask_pid_nr_ns))kallsyms_lookup_name("__task_pid_nr_ns");
-    task_state_addr = (void *)kallsyms_lookup_name("task_state");
+    proc_pid_status_addr = (void *)kallsyms_lookup_name("proc_pid_status");
     do_task_stat_addr = (void *)kallsyms_lookup_name("do_task_stat");
     proc_pid_wchan_addr = (void *)kallsyms_lookup_name("proc_pid_wchan");
-    logkd("+Test-Log+ task_state_addr:%llx,do_task_stat_addr:%llx,proc_pid_wchan_addr:%llx",task_state_addr,do_task_stat_addr,proc_pid_wchan_addr);
+    logkd("+Test-Log+ proc_pid_status_addr:%llx,do_task_stat_addr:%llx,proc_pid_wchan_addr:%llx",proc_pid_status_addr,do_task_stat_addr,proc_pid_wchan_addr);
     hook_err_t err = HOOK_NO_ERR;
-    if(task_state_addr){
-        err = hook_wrap4((void *)task_state_addr, NULL, after_task_state, 0);
-        logkd("+Test-Log+ task_state hook err: %d\n", err);
+    if(proc_pid_status_addr){
+        err = hook_wrap4((void *)proc_pid_status_addr, NULL, after_proc_pid_status, 0);
+        logkd("+Test-Log+ proc_pid_status hook err: %d\n", err);
     }
     if(do_task_stat_addr){
         err = hook_wrap5((void *)do_task_stat_addr, NULL, after_do_task_stat, 0);
@@ -226,8 +226,8 @@ static long ptrace_helper_control0(const char *args, char *__user out_msg, int o
 
 static long ptrace_helper_exit(void *__user reserved)
 {
-    if(task_state_addr){
-        unhook((void *)task_state_addr);
+    if(proc_pid_status_addr){
+        unhook((void *)proc_pid_status_addr);
     }
 
     if(do_task_stat_addr){
